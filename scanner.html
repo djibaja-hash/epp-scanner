@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+  <title>Escáner de trabajador</title>
+
+  <script src="https://unpkg.com/html5-qrcode"
+          type="text/javascript">
+  </script>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 12px;
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    .contenedor {
+      max-width: 600px;
+      margin: auto;
+    }
+
+    h2 {
+      margin-top: 5px;
+      font-size: 20px;
+    }
+
+    #reader {
+      width: 100%;
+      margin-top: 15px;
+      background: black;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .estado {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #222;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      min-height: 50px;
+      border: 0;
+      border-radius: 9px;
+      margin-top: 12px;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+<div class="contenedor">
+
+  <h2>📷 Escanear trabajador</h2>
+
+  <div id="reader"></div>
+
+  <div
+    id="estado"
+    class="estado">
+
+    Apunta la cámara al código de barras Code 128.
+
+  </div>
+
+  <button onclick="cerrar()">
+    CERRAR ESCÁNER
+  </button>
+
+</div>
+
+
+<script>
+
+  let scanner = null;
+
+  let ultimoCodigo = '';
+
+  let ultimoTiempo = 0;
+
+
+  function iniciar() {
+
+    scanner =
+      new Html5Qrcode('reader');
+
+
+    const configuracion = {
+
+      fps: 10,
+
+      qrbox: {
+        width: 300,
+        height: 120
+      },
+
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128
+      ],
+
+      aspectRatio: 1.0
+
+    };
+
+
+    scanner.start(
+
+      {
+        facingMode: 'environment'
+      },
+
+      configuracion,
+
+      function(decodedText) {
+
+        procesarCodigo(decodedText);
+
+      },
+
+      function(errorMessage) {
+
+        // Ignoramos errores normales de lectura.
+
+      }
+
+    )
+
+    .catch(function(error) {
+
+      document.getElementById(
+        'estado'
+      ).textContent =
+        'No se pudo acceder a la cámara. ' +
+        'Verifica que hayas dado permiso al navegador.';
+
+      console.error(error);
+
+    });
+
+  }
+
+
+  function procesarCodigo(codigo) {
+
+    codigo =
+      String(codigo || '').trim();
+
+    if (!codigo) {
+      return;
+    }
+
+
+    /*
+     * Evitar enviar varias veces
+     * el mismo código en pocos segundos.
+     */
+
+    const ahora =
+      Date.now();
+
+    if (
+      codigo === ultimoCodigo &&
+      ahora - ultimoTiempo < 2000
+    ) {
+      return;
+    }
+
+    ultimoCodigo = codigo;
+
+    ultimoTiempo = ahora;
+
+
+    document.getElementById(
+      'estado'
+    ).textContent =
+      'Código leído: ' +
+      codigo;
+
+
+    /*
+     * Enviar código a la ventana
+     * principal de Apps Script.
+     */
+
+    if (window.opener) {
+
+      window.opener.postMessage({
+
+        type: 'CODE128_SCAN',
+
+        code: codigo
+
+      }, '*');
+
+    }
+
+  }
+
+
+  function cerrar() {
+
+    if (scanner) {
+
+      scanner.stop()
+        .catch(function() {})
+        .finally(function() {
+
+          window.close();
+
+        });
+
+    } else {
+
+      window.close();
+
+    }
+
+  }
+
+
+  window.addEventListener(
+    'load',
+    iniciar
+  );
+
+</script>
+
+</body>
+
+</html>
